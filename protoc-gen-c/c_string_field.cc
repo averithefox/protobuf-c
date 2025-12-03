@@ -94,19 +94,15 @@ void StringFieldGenerator::GenerateStructMembers(google::protobuf::io::Printer* 
 {
   const ProtobufCFileOptions opt = descriptor_->file()->options().GetExtension(pb_c_file);
 
-  switch (descriptor_->label()) {
-    case google::protobuf::FieldDescriptor::LABEL_REQUIRED:
-    case google::protobuf::FieldDescriptor::LABEL_OPTIONAL:
-      if (opt.const_strings())
-        printer->Print(variables_, "const ");
-      printer->Print(variables_, "char *$name$$deprecated$;\n");
-      break;
-    case google::protobuf::FieldDescriptor::LABEL_REPEATED:
-      printer->Print(variables_, "size_t n_$name$$deprecated$;\n");
-      if (opt.const_strings())
-        printer->Print(variables_, "const ");
-      printer->Print(variables_, "char **$name$$deprecated$;\n");
-      break;
+  if (descriptor_->is_repeated()) {
+    printer->Print(variables_, "size_t n_$name$$deprecated$;\n");
+    if (opt.const_strings())
+      printer->Print(variables_, "const ");
+    printer->Print(variables_, "char **$name$$deprecated$;\n");
+  } else {
+    if (opt.const_strings())
+      printer->Print(variables_, "const ");
+    printer->Print(variables_, "char *$name$$deprecated$;\n");
   }
 }
 void StringFieldGenerator::GenerateDefaultValueDeclarations(google::protobuf::io::Printer* printer) const
@@ -138,14 +134,10 @@ void StringFieldGenerator::GenerateStaticInit(google::protobuf::io::Printer* pri
   } else {
     vars["default"] = "(char *)protobuf_c_empty_string";
   }
-  switch (descriptor_->label()) {
-    case google::protobuf::FieldDescriptor::LABEL_REQUIRED:
-    case google::protobuf::FieldDescriptor::LABEL_OPTIONAL:
-      printer->Print(vars, "$default$");
-      break;
-    case google::protobuf::FieldDescriptor::LABEL_REPEATED:
-      printer->Print(vars, "0,NULL");
-      break;
+  if (descriptor_->is_repeated()) {
+    printer->Print(vars, "0,NULL");
+  } else {
+    printer->Print(vars, "$default$");
   }
 }
 void StringFieldGenerator::GenerateDescriptorInitializer(google::protobuf::io::Printer* printer) const

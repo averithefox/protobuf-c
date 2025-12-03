@@ -95,19 +95,15 @@ EnumFieldGenerator::~EnumFieldGenerator() {}
 
 void EnumFieldGenerator::GenerateStructMembers(google::protobuf::io::Printer* printer) const
 {
-  switch (descriptor_->label()) {
-    case google::protobuf::FieldDescriptor::LABEL_REQUIRED:
-      printer->Print(variables_, "$type$ $name$$deprecated$;\n");
-      break;
-    case google::protobuf::FieldDescriptor::LABEL_OPTIONAL:
-      if (descriptor_->containing_oneof() == NULL && FieldSyntax(descriptor_) == 2)
-        printer->Print(variables_, "protobuf_c_boolean has_$name$$deprecated$;\n");
-      printer->Print(variables_, "$type$ $name$$deprecated$;\n");
-      break;
-    case google::protobuf::FieldDescriptor::LABEL_REPEATED:
-      printer->Print(variables_, "size_t n_$name$$deprecated$;\n");
-      printer->Print(variables_, "$type$ *$name$$deprecated$;\n");
-      break;
+  if (descriptor_->is_required()) {
+    printer->Print(variables_, "$type$ $name$$deprecated$;\n");
+  } else if (descriptor_->is_repeated()) {
+    printer->Print(variables_, "size_t n_$name$$deprecated$;\n");
+    printer->Print(variables_, "$type$ *$name$$deprecated$;\n");
+  } else {
+    if (descriptor_->containing_oneof() == NULL && FieldSyntax(descriptor_) == 2)
+      printer->Print(variables_, "protobuf_c_boolean has_$name$$deprecated$;\n");
+    printer->Print(variables_, "$type$ $name$$deprecated$;\n");
   }
 }
 
@@ -117,19 +113,15 @@ std::string EnumFieldGenerator::GetDefaultValue(void) const
 }
 void EnumFieldGenerator::GenerateStaticInit(google::protobuf::io::Printer* printer) const
 {
-  switch (descriptor_->label()) {
-    case google::protobuf::FieldDescriptor::LABEL_REQUIRED:
-      printer->Print(variables_, "$default$");
-      break;
-    case google::protobuf::FieldDescriptor::LABEL_OPTIONAL:
-      if (FieldSyntax(descriptor_) == 2)
-        printer->Print(variables_, "0, ");
-      printer->Print(variables_, "$default$");
-      break;
-    case google::protobuf::FieldDescriptor::LABEL_REPEATED:
-      // no support for default?
-      printer->Print("0,NULL");
-      break;
+  if (descriptor_->is_required()) {
+    printer->Print(variables_, "$default$");
+  } else if (descriptor_->is_repeated()) {
+    // no support for default?
+    printer->Print("0,NULL");
+  } else {
+    if (FieldSyntax(descriptor_) == 2)
+      printer->Print(variables_, "0, ");
+    printer->Print(variables_, "$default$");
   }
 }
 

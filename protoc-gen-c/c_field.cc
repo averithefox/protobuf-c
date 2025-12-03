@@ -125,11 +125,11 @@ void FieldGenerator::GenerateDescriptorInitializerGeneric(google::protobuf::io::
     variables["oneofname"] = CamelToLower(oneof->name());
 
   if (FieldSyntax(descriptor_) == 3 &&
-    descriptor_->label() == google::protobuf::FieldDescriptor::LABEL_OPTIONAL) {
+    !descriptor_->is_required() && !descriptor_->is_repeated()) {
     variables["LABEL"] = "NONE";
     optional_uses_has = false;
   } else {
-    variables["LABEL"] = CamelToUpper(GetLabelName(descriptor_->label()));
+    variables["LABEL"] = CamelToUpper(GetLabelName(descriptor_));
   }
 
   if (descriptor_->has_default_value()) {
@@ -145,11 +145,11 @@ void FieldGenerator::GenerateDescriptorInitializerGeneric(google::protobuf::io::
 
   variables["flags"] = "0";
 
-  if (descriptor_->label() == google::protobuf::FieldDescriptor::LABEL_REPEATED
+  if (descriptor_->is_repeated()
    && is_packable_type (descriptor_->type())
    && descriptor_->options().packed()) {
     variables["flags"] += " | PROTOBUF_C_FIELD_FLAG_PACKED";
-  } else if (descriptor_->label() == google::protobuf::FieldDescriptor::LABEL_REPEATED
+  } else if (descriptor_->is_repeated()
    && is_packable_type (descriptor_->type())
    && FieldSyntax(descriptor_) == 3
    && !descriptor_->options().has_packed()) {
@@ -179,22 +179,18 @@ void FieldGenerator::GenerateDescriptorInitializerGeneric(google::protobuf::io::
     "  $value$,\n"
     "  PROTOBUF_C_LABEL_$LABEL$,\n"
     "  PROTOBUF_C_TYPE_$TYPE$,\n");
-  switch (descriptor_->label()) {
-    case google::protobuf::FieldDescriptor::LABEL_REQUIRED:
+  if (descriptor_->is_required()) {
+    printer->Print(variables, "  0,   /* quantifier_offset */\n");
+  } else if (descriptor_->is_repeated()) {
+    printer->Print(variables, "  offsetof($classname$, n_$name$),\n");
+  } else {
+    if (oneof != NULL) {
+      printer->Print(variables, "  offsetof($classname$, $oneofname$_case),\n");
+    } else if (optional_uses_has) {
+      printer->Print(variables, "  offsetof($classname$, has_$name$),\n");
+    } else {
       printer->Print(variables, "  0,   /* quantifier_offset */\n");
-      break;
-    case google::protobuf::FieldDescriptor::LABEL_OPTIONAL:
-      if (oneof != NULL) {
-        printer->Print(variables, "  offsetof($classname$, $oneofname$_case),\n");
-      } else if (optional_uses_has) {
-	printer->Print(variables, "  offsetof($classname$, has_$name$),\n");
-      } else {
-	printer->Print(variables, "  0,   /* quantifier_offset */\n");
-      }
-      break;
-    case google::protobuf::FieldDescriptor::LABEL_REPEATED:
-      printer->Print(variables, "  offsetof($classname$, n_$name$),\n");
-      break;
+    }
   }
   printer->Print(variables, "  offsetof($classname$, $name$),\n");
   printer->Print(variables, "  $descriptor_addr$,\n");
